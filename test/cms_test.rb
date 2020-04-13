@@ -128,10 +128,51 @@ class CMS < Minitest::Test
 
     post "/test.txt/delete"
 
+    assert_equal 302, last_response.status
+
     get last_response["Location"]
-    assert_includes last_response.body, "Test.txt has been deleteted."
+    assert_includes last_response.body, "test.txt has been deleted"
 
     get "/"
     refute_includes last_response.body, "test.txt"
+  end
+
+  def test_signin_form
+    # skip
+    get "/users/signin"
+
+    assert_equal 200, last_response.status
+    assert_includes last_response.body, "<input"
+    assert_includes last_response.body, %q(<button type="submit")
+    end
+
+  def test_signin
+    # skip
+    post "/users/signin", username: "admin", password: "secret"
+    assert_equal 302, last_response.status
+
+    get last_response["Location"]
+    assert_includes last_response.body, "Welcome"
+    assert_includes last_response.body, "Signed in as admin"
+  end
+
+  def test_signin_with_bad_credentials
+    # skip
+    post "/users/signin", username: "guest", password: "shhhh"
+    assert_equal 422, last_response.status
+    assert_includes last_response.body, "Invalid credentials"
+  end
+
+  def test_signout
+    # skip
+    post "/users/signin", username: "admin", password: "secret"
+    get last_response["Location"]
+    assert_includes last_response.body, "Welcome"
+
+    post "/users/signout"
+    get last_response["Location"]
+
+    assert_includes last_response.body, "You have been signed out"
+    assert_includes last_response.body, "Sign In"
   end
 end
