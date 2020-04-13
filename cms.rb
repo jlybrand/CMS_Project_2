@@ -52,6 +52,10 @@ get "/" do
   erb :index
 end
 
+get "/new" do
+  erb :new
+end
+
 get "/:filename" do
   # file_path = root + "/data/" + params[:filename] # set filepath to C:/Users/jalybrand/Desktop/Launch_School/RB175/CMS_Project/data/name of file.txt
 
@@ -74,6 +78,37 @@ get "/:filename/edit" do
   erb :edit
 end
 
+VALID_EXTENSIONS = [".txt", ".md"]
+
+def valid_extension?(ext)
+  return true if VALID_EXTENSIONS.include?(ext)
+end
+
+post "/create" do
+  filename = params[:filename].to_s
+  file_extension = File.extname(filename)
+
+  if (filename.size) == 0
+    session[:message] = "A name is required"
+    status 422
+    erb :new
+  elsif file_extension.empty?
+    session[:message] = "Name must include file extension"
+    status 422
+    erb :new
+  elsif !valid_extension?(file_extension)
+    session[:message] = "That is not a supported file extension."
+    status 422
+    erb :new
+  else
+    file_path = File.join(data_path, filename)
+
+    File.write(file_path, "")
+    session[:message] = "#{params[:filename]} has been created"
+    redirect "/"
+  end
+end
+
 post "/:filename" do
   # file_path = root + "/data/" + params[:filename]
   file_path = File.join(data_path, params[:filename])
@@ -81,5 +116,14 @@ post "/:filename" do
   File.write(file_path, params[:content])
 
   session[:message] = "#{params[:filename]} has been updated."
+  redirect "/"
+end
+
+post "/:filename/delete" do
+  file_path = File.join(data_path, params[:filename])
+
+  File.delete(file_path)
+  session[:message] = "#{params[:filename]} has been deleted."
+
   redirect "/"
 end
