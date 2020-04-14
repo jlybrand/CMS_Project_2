@@ -103,6 +103,30 @@ get "/:filename" do
   end
 end
 
+get '/:filename/clone' do
+  require_signed_in_user
+
+  src =  File.join(data_path, params[:filename])
+  # dest = File.join(data_path, "cloned_file.txt")
+  # @new_file = FileUtils.copy_file(src, dest)
+  # @filename = params[:filename]
+  @content = File.read(src)
+  # load_file_content(src)
+  # erb :rename
+  # Locate file to be cloned
+  # Clone file
+  # Before moving on rename file clone
+  # display message
+  #redirect
+  # session[:message] = "The new file has been created."
+  # redirect '/'
+  erb :duplicate
+end
+
+post '/clone' do
+  "hello"
+end
+
 get "/:filename/edit" do
   require_signed_in_user
 
