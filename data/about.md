@@ -1,2 +1,5 @@
 # Ruby is
-1.Robust *language*
+
+1.  A Dyanmic
+
+*Language*

@@ -7,18 +7,13 @@ require "bcrypt"
 
 configure do
   enable :sessions
-  set :session_secret, 'secret'
+  set :session_secret, 'tigers'
 end
 
-def user_signed_in?
-  session.key?(:username)
-end
+VALID_EXTENSIONS = [".txt", ".md"]
 
-def require_signed_in_user
-  unless user_signed_in?
-    session[:message] = "You must be signed in to do that."
-    redirect "/"
-  end
+def invalid_extension?(extension)
+  extension.empty? || !VALID_EXTENSIONS.include?(extension)
 end
 
 def load_user_credentials
@@ -41,6 +36,17 @@ def valid_credentials?(username, password)
   end
 end
 
+def user_signed_in?
+  session.key?(:username)
+end
+
+def require_user_login
+  unless user_signed_in?
+    session[:message] = "You must be signed in to do that."
+    redirect "/"
+  end
+end
+
 # returns the correct path to where the documents will be stored based on the current environment.
 def data_path
   if ENV["RACK_ENV"] == "test"
@@ -50,7 +56,7 @@ def data_path
   end
 end
 
-# root = File.expand_path("..", __FILE__) # return the path to the project folder.
+# File.expand_path("..", __FILE__) # return the path to the project folder.
 # C:/Users/jalybrand/Desktop/Launch_School/RB175/CMS_Project
 
 def render_markdown(text)
@@ -70,72 +76,37 @@ def load_file_content(path)
   end
 end
 
+# set filepath to C:/Users/jalybrand/Desktop/Launch_School/RB175/CMS_Project/data/name of file.txt
+def file_path(filename)
+   File.join(data_path, filename)
+end
+
+def file_list
+  # returns array of filepaths- ["C:/Users/jalybrand/Desktop/Launch_School/RB175/CMS_Project/data/about.md", "C:/Users/jalybrand/Desktop/Launch_School/RB175/CMS_Project/data/changes.txt", "C:/Users/jalybrand/Desktop/Launch_School/RB175/CMS_Project/data/history.txt"]
+    # filepaths = Dir.glob(root + "/data/*")
+  pattern = File.join(data_path, "*")
+  # iterates over `filepaths` and returns an array of filenames - ["about.md", "changes.txt", "history.txt"]
+  Dir.glob(pattern).map { |path| File.basename(path) }
+end
+
+def create_file(filename, content = "")
+  if  file_exists?(filename)
+    session[:message] = "That file already exists. Please choose another name."
+  else
+    File.write(file_path(filename), content)
+    session[:message] = "#{filename} has been created"
+  end
+end
+
+def file_exists?(filename)
+  file_list.include?(filename)
+end
+
 # Get a list of existing files.
 get "/" do
-# returns array of filepaths- ["C:/Users/jalybrand/Desktop/Launch_School/RB175/CMS_Project/data/about.md", "C:/Users/jalybrand/Desktop/Launch_School/RB175/CMS_Project/data/changes.txt", "C:/Users/jalybrand/Desktop/Launch_School/RB175/CMS_Project/data/history.txt"]
-  # filepaths = Dir.glob(root + "/data/*")
-  pattern = File.join(data_path, "*")
-  filepaths = Dir.glob(pattern)
+  @files = file_list
 
-
-# iterates over `filepaths` and returns an array of filenames - ["about.md", "changes.txt", "history.txt"]
-  @files = filepaths.map do |path|
-    File.basename(path)
-  end
   erb :index
-end
-
-get "/new" do
-  require_signed_in_user
-  erb :new
-end
-
-get "/:filename" do
-  # file_path = root + "/data/" + params[:filename] # set filepath to C:/Users/jalybrand/Desktop/Launch_School/RB175/CMS_Project/data/name of file.txt
-
-  file_path = File.join(data_path, params[:filename])
-
-  if File.file?(file_path)
-    load_file_content(file_path)
-  else
-    session[:message] = "#{params[:filename]} does not exist."
-    redirect "/"
-  end
-end
-
-get '/:filename/clone' do
-  require_signed_in_user
-
-  src =  File.join(data_path, params[:filename])
-  # dest = File.join(data_path, "cloned_file.txt")
-  # @new_file = FileUtils.copy_file(src, dest)
-  # @filename = params[:filename]
-  @content = File.read(src)
-  # load_file_content(src)
-  # erb :rename
-  # Locate file to be cloned
-  # Clone file
-  # Before moving on rename file clone
-  # display message
-  #redirect
-  # session[:message] = "The new file has been created."
-  # redirect '/'
-  erb :duplicate
-end
-
-post '/clone' do
-  "hello"
-end
-
-get "/:filename/edit" do
-  require_signed_in_user
-
-  # file_path = root + "/data/" + params[:filename]
-   file_path = File.join(data_path, params[:filename])
-
-  @filename = params[:filename]
-  @content = File.read(file_path)
-  erb :edit
 end
 
 get "/users/signin" do
@@ -156,64 +127,79 @@ post "/users/signin" do
   end
 end
 
-post "/users/signout" do
-  session.delete(:username)
-  session[:message] = "You have been signed out."
-  redirect "/"
+get "/new" do
+  require_user_login
+
+  erb :new
 end
 
-VALID_EXTENSIONS = [".txt", ".md"]
+get "/:filename" do
+  if File.file?(file_path(params[:filename]))
+    load_file_content(file_path(params[:filename]))
+  else
+    session[:message] = "#{params[:filename]} does not exist."
+    redirect "/"
+  end
+end
 
-def valid_extension?(ext)
-  return true if VALID_EXTENSIONS.include?(ext)
+get "/:filename/edit" do
+  require_user_login
+
+  @filename = params[:filename]
+  @content = File.read(file_path(params[:filename]))
+  erb :edit
 end
 
 post "/create" do
-  require_signed_in_user
+  require_user_login
 
   filename = params[:filename].to_s
+  @content = params[:content]
   file_extension = File.extname(filename)
 
-  if (filename.size) == 0
+  if filename.empty?
     session[:message] = "A name is required"
     status 422
     erb :new
-  elsif file_extension.empty?
-    session[:message] = "Name must include file extension"
-    status 422
-    erb :new
-  elsif !valid_extension?(file_extension)
+  elsif invalid_extension?(file_extension)
     session[:message] = "That is not a supported file extension."
     status 422
     erb :new
   else
-    file_path = File.join(data_path, filename)
-
-    File.write(file_path, "")
-    session[:message] = "#{params[:filename]} has been created"
+    create_file(filename, @content)
     redirect "/"
   end
 end
 
 post "/:filename" do
-  require_signed_in_user
+  require_user_login
 
-  # file_path = root + "/data/" + params[:filename]
-  file_path = File.join(data_path, params[:filename])
-
-  File.write(file_path, params[:content])
+  File.write(file_path(params[:filename]), params[:content])
 
   session[:message] = "#{params[:filename]} has been updated."
   redirect "/"
 end
 
 post "/:filename/delete" do
-  require_signed_in_user
+  require_user_login
 
-  file_path = File.join(data_path, params[:filename])
-
-  File.delete(file_path)
+  File.delete(file_path(params[:filename]))
   session[:message] = "#{params[:filename]} has been deleted."
 
+  redirect "/"
+end
+
+post '/:filename/clone' do
+  require_user_login
+
+  @filename = params[:filename]
+  @content = File.read(file_path(@filename))
+
+  erb :new
+end
+
+post "/users/signout" do
+  session.delete(:username)
+  session[:message] = "You have been signed out."
   redirect "/"
 end
