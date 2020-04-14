@@ -1,4 +1,5 @@
-{
-  bob: $2a$12$t/sGW3ERuxemmSD1EbUZ8eqk6JVg2DtIK4UQ9tqCaMQQaRYVEm/5e,
-  kate: $2a$12$pjU8rkcr62mlgGZk2Lf6J.BYXV3MSH10J6NzBAAy/rfSQY8pBjG9G
-}
+---
+bob: "$2a$12$t/sGW3ERuxemmSD1EbUZ8eqk6JVg2DtIK4UQ9tqCaMQQaRYVEm/5e"
+kate: "$2a$12$pjU8rkcr62mlgGZk2Lf6J.BYXV3MSH10J6NzBAAy/rfSQY8pBjG9G"
+bill: "$2a$12$FlYUFTKvy53vi5xO/zxfu.mqJDZOY.S04vV5PSZx51AQvUxRbpUS."
+jon: "$2a$12$PIa/emjwPovTpkBvO/CCTOavKcgMxk/mvNm0QqIlKdX4pcz5MNzaS"

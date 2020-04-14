@@ -16,12 +16,15 @@ def invalid_extension?(extension)
   extension.empty? || !VALID_EXTENSIONS.include?(extension)
 end
 
-def load_user_credentials
-  credentials_path = if ENV["RACK_ENV"] == "test"
+def credentials_path
+  if ENV["RACK_ENV"] == "test"
     File.expand_path("../test/users.yml", __FILE__)
   else
     File.expand_path("../users.yml", __FILE__)
   end
+end
+
+def load_user_credentials
   YAML.load_file(credentials_path)
 end
 
@@ -34,6 +37,10 @@ def valid_credentials?(username, password)
   else
     false
   end
+end
+
+def session
+  last_request.env["rack.session"]
 end
 
 def user_signed_in?
@@ -109,7 +116,40 @@ get "/" do
   erb :index
 end
 
+get "/users/signup" do
+
+  erb :signup
+end
+
+def invalid_username?(username)
+  load_user_credentials.key?(username)
+end
+
+def store_credentials(username, password)
+  credentials = load_user_credentials
+  encrypted_password = BCrypt::Password.create(password).to_s
+  credentials[username] = encrypted_password
+  File.write(File.basename(credentials_path), credentials.to_yaml)
+end
+
+post '/users/signup' do
+  @username = params[:username]
+  password = params[:password]
+
+  if invalid_username?(@username)
+    session[:message] = "Username is in use, please choose another."
+    status 422
+    erb :signup
+  else
+    store_credentials(@username, password)
+    session[:message] = "Account has been created. Please sign in to continue."
+    redirect "/users/signin"
+  end
+end
+
 get "/users/signin" do
+  username = params[:username]
+
   erb :signin
 end
 
