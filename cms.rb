@@ -39,22 +39,17 @@ def valid_credentials?(username, password)
   end
 end
 
-def session
-  last_request.env["rack.session"]
-end
-
 def user_signed_in?
   session.key?(:username)
 end
 
 def require_user_login
-  unless user_signed_in?
-    session[:message] = "You must be signed in to do that."
-    redirect "/"
-  end
+  return if user_signed_in?
+
+  session[:message] = "You must be signed in to do that."
+  redirect "/"
 end
 
-# returns the correct path to where the documents will be stored based on the current environment.
 def data_path
   if ENV["RACK_ENV"] == "test"
     File.expand_path("../test/data", __FILE__)
@@ -63,16 +58,13 @@ def data_path
   end
 end
 
-# File.expand_path("..", __FILE__) # return the path to the project folder.
-# C:/Users/jalybrand/Desktop/Launch_School/RB175/CMS_Project
-
 def render_markdown(text)
   markdown = Redcarpet::Markdown.new(Redcarpet::Render::HTML)
   markdown.render(text)
 end
 
 def load_file_content(path)
-  content = File.read(path) # returns contents of file using #IOread
+  content = File.read(path)
 
   case File.extname(path)
   when ".txt"
@@ -83,21 +75,17 @@ def load_file_content(path)
   end
 end
 
-# set filepath to C:/Users/jalybrand/Desktop/Launch_School/RB175/CMS_Project/data/name of file.txt
 def file_path(filename)
-   File.join(data_path, filename)
+  File.join(data_path, filename)
 end
 
 def file_list
-  # returns array of filepaths- ["C:/Users/jalybrand/Desktop/Launch_School/RB175/CMS_Project/data/about.md", "C:/Users/jalybrand/Desktop/Launch_School/RB175/CMS_Project/data/changes.txt", "C:/Users/jalybrand/Desktop/Launch_School/RB175/CMS_Project/data/history.txt"]
-    # filepaths = Dir.glob(root + "/data/*")
   pattern = File.join(data_path, "*")
-  # iterates over `filepaths` and returns an array of filenames - ["about.md", "changes.txt", "history.txt"]
   Dir.glob(pattern).map { |path| File.basename(path) }
 end
 
 def create_file(filename, content = "")
-  if  file_exists?(filename)
+  if file_exists?(filename)
     session[:message] = "That file already exists. Please choose another name."
   else
     File.write(file_path(filename), content)
@@ -109,29 +97,12 @@ def file_exists?(filename)
   file_list.include?(filename)
 end
 
-def is_an_image?(file)
+def an_image?(file)
   (File.extname(file)) == ".JPG"
 end
 
-
 def invalid_extension?(extension)
   extension.empty? || !VALID_EXTENSIONS.include?(extension)
-end
-
-# Get a list of existing files.
-get "/" do
-  @files = file_list
-
-  # @files.inspect
-  @images, @documents = file_list.partition { |file| is_an_image?(file) }
-  # @documents.inspect
-  # @images.inspect
-  erb :index
-end
-
-get "/users/signup" do
-
-  erb :signup
 end
 
 def invalid_username?(username)
@@ -143,6 +114,18 @@ def store_credentials(username, password)
   encrypted_password = BCrypt::Password.create(password).to_s
   credentials[username] = encrypted_password
   File.write(File.basename(credentials_path), credentials.to_yaml)
+end
+
+get "/" do
+  @images, @documents = file_list.partition { |file| an_image?(file) }
+
+  erb :index, layout: :layout
+end
+
+### Signup Routes ###
+
+get "/users/signup" do
+  erb :signup
 end
 
 post '/users/signup' do
@@ -160,8 +143,10 @@ post '/users/signup' do
   end
 end
 
+### Signin Routes ###
+
 get "/users/signin" do
-  username = params[:username]
+  @username = params[:username]
 
   erb :signin
 end
@@ -179,6 +164,8 @@ post "/users/signin" do
     erb :signin
   end
 end
+
+###
 
 get "/new" do
   require_user_login
