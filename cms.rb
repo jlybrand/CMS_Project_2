@@ -10,10 +10,10 @@ configure do
   set :session_secret, 'tigers'
 end
 
-VALID_EXTENSIONS = [".txt", ".md"]
+VALID_EXTENSIONS = [".txt", ".md", ".jpg", ".png"]
 
-def invalid_extension?(extension)
-  extension.empty? || !VALID_EXTENSIONS.include?(extension)
+def document_type(file)
+  VALID_EXTENSIONS.include?(File.extname(file))
 end
 
 def credentials_path
@@ -109,10 +109,23 @@ def file_exists?(filename)
   file_list.include?(filename)
 end
 
+def is_an_image?(file)
+  (File.extname(file)) == ".JPG"
+end
+
+
+def invalid_extension?(extension)
+  extension.empty? || !VALID_EXTENSIONS.include?(extension)
+end
+
 # Get a list of existing files.
 get "/" do
   @files = file_list
 
+  # @files.inspect
+  @images, @documents = file_list.partition { |file| is_an_image?(file) }
+  # @documents.inspect
+  # @images.inspect
   erb :index
 end
 
@@ -241,5 +254,27 @@ end
 post "/users/signout" do
   session.delete(:username)
   session[:message] = "You have been signed out."
+  redirect "/"
+end
+
+### Upload Image ###
+
+get "/image/upload" do
+  require_user_login
+
+  erb :upload
+end
+
+post '/image/upload' do
+  require_user_login
+
+  name = params[:image][:filename]
+  image = params[:image][:tempfile]
+
+  File.open(File.join(data_path, name), "wb") do |file|
+    file.write(image.read)
+  end
+
+  session[:message] = "#{name} has been added."
   redirect "/"
 end
